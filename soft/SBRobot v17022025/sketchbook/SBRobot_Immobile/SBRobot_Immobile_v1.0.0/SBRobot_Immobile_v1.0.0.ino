@@ -1,5 +1,18 @@
 #include <Wire.h>
 #include <Preferences.h> //Bibliothèque pour la mémoire Flash
+#include <Arduino_GFX_Library.h>
+#include "I2Cdev.h"
+#include <DFRobot_INA219.h>
+
+#define INA219_I2C_ADDRESS  (0x40)
+DFRobot_INA219_IIC power_monitor(&Wire,INA219_I2C_ADDRESS);
+boolean power_monitor_ok = false;
+
+// Display & Graphics
+#include <Arduino_GFX_Library.h> /* Use v1.4.6, higher versions may conflict with SPI driver! */
+#include "SD_MMC.h"
+#include <FS.h>
+#include "JpegFunc.h"
 
 // --- PINS MOTEURS ---
 const int ENA = 46; const int IN1 = 7; const int IN2 = 18;
@@ -12,6 +25,36 @@ const int ENC_R_A = 9;  const int ENC_R_B = 47;
 #define MPU_ADDR 0x68
 #define SDA_PIN 5
 #define SCL_PIN 4
+
+// SD card connections.
+#define PIN_SD_CMD  2
+#define PIN_SD_CLK  42
+#define PIN_SD_D0  41
+
+// TFT connctions
+#define TFT_CS  15
+#define TFT_MOSI  13
+#define TFT_MISO  12
+#define TFT_SCLK  14
+#define TFT_DC  21
+
+Arduino_ESP32SPI *bus = new Arduino_ESP32SPI(TFT_DC,TFT_CS,TFT_SCLK,TFT_MOSI,TFT_MISO,HSPI,true);
+
+// Graphics defines
+#define TFT_BLK  48
+#define TFT_RES  -1
+Arduino_GFX *gfx = new Arduino_ST7789(bus, TFT_RES, 0 /* rotation */, true /* IPS */);
+
+//Define pictures 
+#define MODE_CALIBRATION_START "/MODE_CALIBRATION_START.jpg"
+#define MODE_CALIBRATION_MPU "/MODE_CALIBRATION_MPU.jpg"
+#define MODE_CALIBRATION_DEADZONE "/MODE_CALIBRATION_DEADZONE.jpg"
+#define MODE_CALIBRATION_SPEED_SYNC "/MODE_CALIBRATION_SPEED_SYNC.jpg"
+#define MODE_CALIBRATION_SAVE "/MODE_CALIBRATION_SAVE.jpg"
+#define MODE_CALIBRATION_END "/MODE_CALIBRATION_END.jpg"
+#define OK_K  "/ok-horizontal.jpg"
+
+uint8_t image_id = 0xff; // undefined.
 
 // --- VARIABLES GLOBALES ---
 volatile long countLeft = 0;
@@ -27,10 +70,20 @@ float ratioRight = 1.0;
 
 // Variables de navigation et Securite
 float anglePitch = 0;
-const float DEADZONE = 2.0;
+const float DEADZONE = 1.5; // Zone morte réduite pour le PID
 const float ANGLE_CHUTE = 60.0;
 const float ANGLE_REPRISE = 5.0;
 bool estTombe = false;
+
+// --- VARIABLES PID ---
+// À AJUSTER SELON TON ROBOT !
+float Kp = 6;  // Force de réaction immédiate
+float Ki = 0;   // Correction de l'erreur dans le temps
+float Kd =  0;   // Anticipation de la vitesse de chute
+float setpoint = 0.0; // Angle cible (équilibre parfait)
+float integral = 0;
+float previous_error = 0;
+unsigned long previous_time = 0;
 
 // Instance de la memoire Flash
 Preferences preferences; 
@@ -43,8 +96,45 @@ void IRAM_ATTR readEncoderRight() {
   if (digitalRead(ENC_R_A) == digitalRead(ENC_R_B)) countRight++; else countRight--;
 }
 
+// ==========================================
+//                Affichage
+// ==========================================
+
+// pixel drawing callback
+static int jpegDrawCallback(JPEGDRAW *pDraw) {
+  gfx->draw16bitBeRGBBitmap(pDraw->x, pDraw->y, pDraw->pPixels, pDraw->iWidth, pDraw->iHeight);
+  return 1;
+}
+
+void image_show(char *p_filename) {
+  jpegDraw(p_filename,jpegDrawCallback,true,0,0,gfx->width(),gfx->height()); // x, y, w, h
+}
+
+void sdcard_init(void) {
+  SD_MMC.setPins(PIN_SD_CLK, PIN_SD_CMD, PIN_SD_D0);
+  if (!SD_MMC.begin("/sdcard", true, true)) {
+    Serial.println("SD card not found");
+    gfx->println(F("SD card not found"));
+  }
+}
+
+void display_init(void) {
+  pinMode(TFT_BLK, OUTPUT);
+  digitalWrite(TFT_BLK, 1);
+  gfx->begin();
+  gfx->fillScreen(WHITE);
+  gfx->setTextSize(1);
+  gfx->setTextColor(RED);
+}
+
 void setup() {
+  // Initialize serial communication
   Serial.begin(115200);
+  Serial.flush();
+  
+  // Display & SD card
+  display_init();
+  sdcard_init();
   
   // Config Pins
   pinMode(ENA, OUTPUT); pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
@@ -66,7 +156,6 @@ void setup() {
   readMPU();
   Serial.print("Check Z au demarrage: "); Serial.println(accZ);
 
-  // On ouvre l'espace de stockage nomme "robot_calib" en mode Lecture/Ecriture (false)
   preferences.begin("robot_calib", false);
 
   if (accZ < -4000) {
@@ -74,7 +163,7 @@ void setup() {
     runCalibrationRoutine();
   } else {
     // ROBOT A L'ENDROIT : On essaie de lire la memoire
-    bool isCalibrated = preferences.getBool("isCalibrated", false); // false par défaut
+    bool isCalibrated = preferences.getBool("isCalibrated", false); 
     
     if (isCalibrated) {
       Serial.println("--- CHARGEMENT DES DONNÉES DEPUIS LA FLASH ---");
@@ -91,12 +180,14 @@ void setup() {
       Serial.println("--> Robot prêt pour l'équilibre !");
       delay(2000);
     } else {
-      // Aucune donnée trouvee en memoire !
       Serial.println("! ERREUR : AUCUNE CALIBRATION EN MÉMOIRE !");
       Serial.println("Veuillez éteindre le robot, le retourner (roues en l'air) et le rallumer pour calibrer.");
-      while(true) { delay(1000); } // On bloque le programme ici par securite
+      while(true) { delay(1000); } 
     }
   }
+  
+  // Initialisation du chronomètre pour le PID
+  previous_time = millis();
 }
 
 void loop() {
@@ -106,8 +197,13 @@ void loop() {
   // --- 2. CALCUL ANGLE ---
   float accX_corrige = accX - offAccX;
   float accZ_corrige = accZ - (offAccZ - 16384);
-
   anglePitch = atan2(accX_corrige, accZ_corrige) * 180.0 / PI;
+
+  // --- CALCUL DU TEMPS (dt) POUR LE PID ---
+  unsigned long current_time = millis();
+  float dt = (current_time - previous_time) / 1000.0; // Conversion en secondes
+  if (dt <= 0.0) dt = 0.001; // Sécurité
+  previous_time = current_time;
 
   // --- 3. GESTION ANTI-CHUTE ---
   if (abs(anglePitch) > ANGLE_CHUTE) {
@@ -118,31 +214,48 @@ void loop() {
   if (estTombe && abs(anglePitch) < ANGLE_REPRISE) {
     Serial.println("Robot redressé - Reprise de l'équilibre");
     estTombe = false;
+    integral = 0; // Reset du PID
     delay(500); 
+    previous_time = millis(); 
   }
+
+  // --- CALCUL PID ---
+  float error = setpoint - anglePitch;
+  integral += error * dt;
+  integral = constrain(integral, -100, 100); // Anti-windup
+  
+  float derivative = (error - previous_error) / dt;
+  previous_error = error;
+
+  float pid_output = (Kp * error) + (Ki * integral) + (Kd * derivative);
 
   // --- 4. COMMANDE MOTEURS ---
   if (estTombe) {
     stopMotors();
+    integral = 0; 
   } 
   else {
     int plageUtile = 255 - commonMinPWM;
-    int baseSpeed = map(abs((int)anglePitch), 0, (int)ANGLE_CHUTE, 0, plageUtile); 
+    
+    // Vitesse basée sur le PID
+    int baseSpeed = abs((int)pid_output);
     baseSpeed = constrain(baseSpeed, 0, plageUtile);
 
-    if (anglePitch > DEADZONE) {
+    if (abs(anglePitch) <= DEADZONE) {
+      stopMotors();
+      integral = 0; 
+    }
+    else if (pid_output < 0) { 
       moveForward(baseSpeed);
     } 
-    else if (anglePitch < -DEADZONE) {
+    else if (pid_output > 0) {
       moveBackward(baseSpeed);
-    } 
-    else {
-      stopMotors();
     }
   }
 
   // --- 5. TÉLÉMÉTRIE ---
   Serial.print("Angle: "); Serial.print(anglePitch);
+  Serial.print(" | PID: "); Serial.print(pid_output);
   Serial.print(" | Etat: "); Serial.println(estTombe ? "COUCHÉ" : "DEBOUT");
 
   delay(20); 
@@ -157,15 +270,27 @@ void runCalibrationRoutine() {
   Serial.println("   MODE CALIBRATION DETECTÉ (Robot inversé)");
   Serial.println("========================================");
   Serial.println("Remettez le robot à l'endroit, ROUES EN L'AIR (sur un socle).");
+
+  gfx->setTextSize(2); // Texte plus gros pour qu'il soit bien visible
+  gfx->setTextColor(WHITE);
   
-  for (int i = 10; i > 0; i--) {
+  // Compte à rebours initial
+  for (int i = 10; i >= 0; i--) {
+    image_show((char*)MODE_CALIBRATION_START);
+    gfx->setRotation(1);
+    gfx->setCursor(212, 146);
+    gfx->print(i);
     Serial.print(i); Serial.print("s.. ");
+    gfx->setRotation(0);
     delay(1000);
   }
   Serial.println("\n");
 
   // --- ETAPE 1 : MPU6050 ---
   Serial.println("[1/3] Calibration MPU6050...");
+  image_show((char*)MODE_CALIBRATION_MPU);
+  gfx->setRotation(1);
+  gfx->setRotation(0);
   long sumAx=0, sumAz=0;
   for (int i = 0; i < 2000; i++) {
     readMPU();
@@ -177,6 +302,7 @@ void runCalibrationRoutine() {
 
   // --- ETAPE 2 : ZONE MORTE ---
   Serial.println("\n[2/3] Calibration Zone Morte...");
+  image_show((char*)MODE_CALIBRATION_DEADZONE);
   int minL = 0, minR = 0;
   countLeft = 0;
   for (int i = 0; i < 255; i++) {
@@ -195,6 +321,7 @@ void runCalibrationRoutine() {
 
   // --- ETAPE 3 : SYNCHRONISATION VITESSE ---
   Serial.println("\n[3/3] Calibration Vitesses...");
+  image_show((char*)MODE_CALIBRATION_SPEED_SYNC);
   countLeft = 0; countRight = 0;
   int testSpeed = 200;
   
@@ -219,19 +346,34 @@ void runCalibrationRoutine() {
   // --- SAUVEGARDE EN MÉMOIRE FLASH ---
   Serial.println("\n========================================");
   Serial.println(" SAUVEGARDE DANS LA MÉMOIRE FLASH...");
+  image_show((char*)MODE_CALIBRATION_SAVE);
   
   preferences.putFloat("offAccX", offAccX);
   preferences.putFloat("offAccZ", offAccZ);
   preferences.putInt("minPWM", commonMinPWM);
   preferences.putFloat("ratioL", ratioLeft);
   preferences.putFloat("ratioR", ratioRight);
-  preferences.putBool("isCalibrated", true); // On valide qu'une calibration a été faite
+  preferences.putBool("isCalibrated", true); 
 
   Serial.println(" SAUVEGARDE RÉUSSIE !");
-  Serial.println(" Mode Équilibre dans 3 sec... Lâchez le robot sur le sol !");
+
+
+  Serial.println("\n Mode Équilibre dans 3 sec... Lâchez le robot sur le sol !");
   Serial.println("========================================");
   
-  delay(3000);
+  // Troisième compte à rebours (Lâcher le robot)  
+  gfx->setTextSize(2);
+  gfx->setTextColor(WHITE);
+  for (int i = 3; i >= 0; i--) {
+    image_show((char*)MODE_CALIBRATION_END);
+    gfx->setRotation(1);
+    gfx->setCursor(212, 146);
+    gfx->print(i);
+    Serial.print(i); Serial.print("s.. ");
+    gfx->setRotation(0);
+    delay(1000);
+  }
+
 }
 
 // ==========================================
