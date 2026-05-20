@@ -60,27 +60,29 @@ uint8_t image_id = 0xff; // undefined.
 volatile long countLeft = 0;
 volatile long countRight = 0;
 int16_t accX, accY, accZ;
+int16_t gyroX, gyroY, gyroZ;
 
 // Variables de calibration
 float offAccX = 0; 
 float offAccZ = 16384; 
+float offGyroY = 0;
 int commonMinPWM = 0;
 float ratioLeft = 1.0;
 float ratioRight = 1.0;
 
 // Variables de navigation et Securite
 float anglePitch = 0;
-const float DEADZONE = 1.5; // Zone morte réduite pour le PID
+const float DEADZONE = 0; // Zone morte réduite pour le PID
 const float ANGLE_CHUTE = 60.0;
-const float ANGLE_REPRISE = 5.0;
+const float ANGLE_REPRISE = 5;
 bool estTombe = false;
 
 // --- VARIABLES PID ---
 // À AJUSTER SELON TON ROBOT !
-float Kp = 6;  // Force de réaction immédiate
+float Kp = 20;  // Force de réaction immédiate
 float Ki = 0;   // Correction de l'erreur dans le temps
-float Kd =  0;   // Anticipation de la vitesse de chute
-float setpoint = 0.0; // Angle cible (équilibre parfait)
+float Kd =  0.4;   // Anticipation de la vitesse de chute
+float setpoint = 0; // Angle cible (équilibre parfait)
 float integral = 0;
 float previous_error = 0;
 unsigned long previous_time = 0;
@@ -97,6 +99,9 @@ void IRAM_ATTR readEncoderRight() {
 }
 
 // ==========================================
+
+
+
 //                Affichage
 // ==========================================
 
@@ -169,7 +174,10 @@ void setup() {
       Serial.println("--- CHARGEMENT DES DONNÉES DEPUIS LA FLASH ---");
       offAccX = preferences.getFloat("offAccX", 0);
       offAccZ = preferences.getFloat("offAccZ", 16384);
+      offGyroY = preferences.getFloat("offGyroY", 0);
       commonMinPWM = preferences.getInt("minPWM", 0);
+      commonMinPWM = commonMinPWM - 20; // Réduit la violence des petits à-coups
+      if (commonMinPWM < 0) commonMinPWM = 0; // Sécurité
       ratioLeft = preferences.getFloat("ratioL", 1.0);
       ratioRight = preferences.getFloat("ratioR", 1.0);
       
@@ -191,19 +199,30 @@ void setup() {
 }
 
 void loop() {
+  // --- CHRONOMÈTRE STRICT (Boucle à 100Hz) ---
+  unsigned long current_time = millis();
+  float dt = (current_time - previous_time) / 1000.0; // Conversion en secondes
+  
+  // Si moins de 10ms se sont écoulées, on quitte le loop et on attend
+  if (dt < 0.01) return;
+
+  previous_time = current_time;
+
   // --- 1. LECTURE MPU6050 ---
   readMPU();
 
-  // --- 2. CALCUL ANGLE ---
+  // --- 2. CALCUL ANGLE (Filtre Complémentaire) ---
   float accX_corrige = accX - offAccX;
-  float accZ_corrige = accZ - (offAccZ - 16384);
-  anglePitch = atan2(accX_corrige, accZ_corrige) * 180.0 / PI;
-
-  // --- CALCUL DU TEMPS (dt) POUR LE PID ---
-  unsigned long current_time = millis();
-  float dt = (current_time - previous_time) / 1000.0; // Conversion en secondes
-  if (dt <= 0.0) dt = 0.001; // Sécurité
-  previous_time = current_time;
+  float accZ_corrige = accZ - offAccZ;
+  
+  // On calcule l'angle brut de l'accéléromètre (accPitch)
+  float accPitch = atan2(accX_corrige, accZ_corrige) * 180.0 / PI;
+  
+  // Vitesse de rotation selon le gyroscope avec offset corrigé
+  float gyroRate = -(gyroY - offGyroY) / 131.0;
+  
+  // Fusion magique ! (Maintenant, dt et accPitch sont bien déclarés)
+  anglePitch = 0.90 * (anglePitch + gyroRate * dt) + 0.10 * accPitch;
 
   // --- 3. GESTION ANTI-CHUTE ---
   if (abs(anglePitch) > ANGLE_CHUTE) {
@@ -254,11 +273,14 @@ void loop() {
   }
 
   // --- 5. TÉLÉMÉTRIE ---
-  Serial.print("Angle: "); Serial.print(anglePitch);
-  Serial.print(" | PID: "); Serial.print(pid_output);
-  Serial.print(" | Etat: "); Serial.println(estTombe ? "COUCHÉ" : "DEBOUT");
+  static unsigned long last_print = 0;
+  if (millis() - last_print > 250) {
+    Serial.print("Angle: "); Serial.print(anglePitch);
+    Serial.print(" | PID: "); Serial.print(pid_output);
+    Serial.print(" | Etat: "); Serial.println(estTombe ? "COUCHÉ" : "DEBOUT");
+    last_print = millis();
+  }
 
-  delay(20); 
 }
 
 // ==========================================
@@ -289,16 +311,15 @@ void runCalibrationRoutine() {
   // --- ETAPE 1 : MPU6050 ---
   Serial.println("[1/3] Calibration MPU6050...");
   image_show((char*)MODE_CALIBRATION_MPU);
-  gfx->setRotation(1);
-  gfx->setRotation(0);
-  long sumAx=0, sumAz=0;
+  long sumAx=0, sumAz=0, sumGy=0; // Ajout de sumGy
   for (int i = 0; i < 2000; i++) {
     readMPU();
-    sumAx += accX; sumAz += accZ;
+    sumAx += accX; sumAz += accZ; sumGy += gyroY; // Ajout de gyroY
     delay(2);
   }
   offAccX = sumAx / 2000.0;
-  offAccZ = sumAz / 2000.0; 
+  offAccZ = (sumAz / 2000.0) - 16384.0;
+  offGyroY = sumGy / 2000.0; // Sauvegarde de l'offset Gyro
 
   // --- ETAPE 2 : ZONE MORTE ---
   Serial.println("\n[2/3] Calibration Zone Morte...");
@@ -318,6 +339,10 @@ void runCalibrationRoutine() {
     if (abs(countRight) > 5) { minR = i; analogWrite(ENB, 0); break; }
   }
   commonMinPWM = max(minL, minR);
+
+  Serial.print("-> PWM Min Moteur Gauche : "); Serial.println(minL);
+  Serial.print("-> PWM Min Moteur Droit  : "); Serial.println(minR);
+  Serial.print("-> PWM Min Commun (retenu): "); Serial.println(commonMinPWM);
 
   // --- ETAPE 3 : SYNCHRONISATION VITESSE ---
   Serial.println("\n[3/3] Calibration Vitesses...");
@@ -350,6 +375,7 @@ void runCalibrationRoutine() {
   
   preferences.putFloat("offAccX", offAccX);
   preferences.putFloat("offAccZ", offAccZ);
+  preferences.putFloat("offGyroY", offGyroY);
   preferences.putInt("minPWM", commonMinPWM);
   preferences.putFloat("ratioL", ratioLeft);
   preferences.putFloat("ratioR", ratioRight);
@@ -382,12 +408,22 @@ void runCalibrationRoutine() {
 
 void readMPU() {
   Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x3B);
+  Wire.write(0x3B); // Registre de départ (Accéléromètre X)
   Wire.endTransmission(false);
-  Wire.requestFrom(MPU_ADDR, 6, true);
+  
+  // On demande 14 octets au lieu de 6 (Accéléromètre + Température + Gyroscope)
+  Wire.requestFrom((uint8_t)MPU_ADDR, (size_t)14, true);
+  
   accX = (Wire.read() << 8 | Wire.read());
   accY = (Wire.read() << 8 | Wire.read());
   accZ = (Wire.read() << 8 | Wire.read());
+  
+  // On lit et on ignore la température (2 octets)
+  Wire.read(); Wire.read(); 
+  
+  gyroX = (Wire.read() << 8 | Wire.read());
+  gyroY = (Wire.read() << 8 | Wire.read());
+  gyroZ = (Wire.read() << 8 | Wire.read());
 }
 
 void moveForward(int baseSpeed) {

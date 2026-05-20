@@ -1,0 +1,183 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36" version="29.5.3">
+  <diagram name="Page-1" id="RiK2_-dHJtD6VT6NbOVV">
+    <mxGraphModel grid="1" page="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-102" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=middle;startSize=25;container=0;collapsible=0;rounded=1;arcSize=14;dropTarget=0;verticalAlign=top;" value="Initialisation Matérielle" vertex="1">
+          <mxGeometry height="231" width="250" x="2375" y="494" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-103" parent="gN3j-lzW-usYKDrJdfj_-102" style="rounded=1;arcSize=40;strokeWidth=2" value="Allumage" vertex="1">
+          <mxGeometry height="40" width="82" x="92" y="46" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-104" parent="gN3j-lzW-usYKDrJdfj_-102" style="rounded=1;arcSize=40;strokeWidth=2" value="Lecture Accéléromètre" vertex="1">
+          <mxGeometry height="40" width="180" x="43" y="161" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-105" edge="1" parent="gN3j-lzW-usYKDrJdfj_-102" source="gN3j-lzW-usYKDrJdfj_-103" style="curved=1;startArrow=none;;exitX=0.5;exitY=0.99;entryX=0.5;entryY=-0.01;rounded=0;" target="gN3j-lzW-usYKDrJdfj_-104" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-106" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=middle;startSize=25;container=0;collapsible=0;rounded=1;arcSize=14;dropTarget=0;" value="Séquence de Calibration" vertex="1">
+          <mxGeometry height="415" width="317" x="1950" y="747" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-107" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=middle;startSize=25;container=0;collapsible=0;rounded=1;arcSize=14;dropTarget=0;verticalAlign=top;" value="Chargement Config" vertex="1">
+          <mxGeometry height="231" width="224" x="2750" y="743.5" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-108" parent="gN3j-lzW-usYKDrJdfj_-107" style="rounded=1;arcSize=40;strokeWidth=2" value="Lire Flash" vertex="1">
+          <mxGeometry height="40" width="85" x="77" y="46" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-109" parent="gN3j-lzW-usYKDrJdfj_-107" style="rounded=1;arcSize=40;strokeWidth=2" value="Appliquer PID Fixes" vertex="1">
+          <mxGeometry height="40" width="154" x="43" y="161" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-110" edge="1" parent="gN3j-lzW-usYKDrJdfj_-107" source="gN3j-lzW-usYKDrJdfj_-108" style="curved=1;startArrow=none;;exitX=0.51;exitY=0.99;entryX=0.5;entryY=-0.01;rounded=0;" target="gN3j-lzW-usYKDrJdfj_-109" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-111" parent="1" style="rounded=1;arcSize=40;strokeWidth=2" value="Attente" vertex="1">
+          <mxGeometry height="40" width="143" x="2037" y="804.5" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-114" parent="1" style="rounded=1;arcSize=40;strokeWidth=2" value="Calibration MPU" vertex="1">
+          <mxGeometry height="40" width="131" x="2043" y="934.5" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-117" parent="1" style="rounded=1;arcSize=40;strokeWidth=2" value="Sauvegarde dans la flash" vertex="1">
+          <mxGeometry height="65" width="160" x="2028.5" y="1064.5" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-120" parent="1" style="rounded=1;arcSize=40;strokeWidth=2" value="Attente Verticale" vertex="1">
+          <mxGeometry height="40" width="139" x="2434" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-123" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=middle;startSize=25;container=0;collapsible=0;rounded=1;arcSize=14;dropTarget=0;verticalAlign=top;" value="Mode Équilibrage" vertex="1">
+          <mxGeometry height="270" width="283" x="2358.5" y="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-124" parent="gN3j-lzW-usYKDrJdfj_-123" style="rounded=1;arcSize=40;strokeWidth=2" value="Calcul PID (Angle)" vertex="1">
+          <mxGeometry height="40" width="213" x="41.5" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-125" parent="gN3j-lzW-usYKDrJdfj_-123" style="rounded=1;arcSize=40;strokeWidth=2" value="Commande Moteurs" vertex="1">
+          <mxGeometry height="40" width="157" x="69.5" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-126" edge="1" parent="gN3j-lzW-usYKDrJdfj_-123" source="gN3j-lzW-usYKDrJdfj_-124" style="curved=1;startArrow=none;;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-125" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-128" parent="1" style="rounded=1;arcSize=40;strokeWidth=2" value="Moteurs COUPÉS (Sécurité)" vertex="1">
+          <mxGeometry height="40" width="209" x="2765" y="1097" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-134" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-111" style="curved=1;startArrow=none;;exitX=0.47;exitY=0.99;entryX=0.49;entryY=0.01;rounded=0;" target="gN3j-lzW-usYKDrJdfj_-114" value="Fin des 10s">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2090.5" y="894.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-135" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-114" style="curved=1;startArrow=none;;entryX=0.5;entryY=0;rounded=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="gN3j-lzW-usYKDrJdfj_-117" value="Offsets calculés">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2090.5" y="1024.5" />
+            </Array>
+            <mxPoint x="2200.5" y="904.5" as="sourcePoint" />
+            <mxPoint x="2160.5" y="1134.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-140" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-102" style="curved=1;startArrow=none;;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-106" value="Robot à l&#39;envers (Inversé)">
+          <mxGeometry relative="1" x="0.5552" y="42" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="2108" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-141" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-102" style="curved=1;startArrow=none;;exitX=1;exitY=0.5;entryX=0.5;entryY=0;rounded=0;exitDx=0;exitDy=0;" target="gN3j-lzW-usYKDrJdfj_-107" value="Robot  debout (Normal)">
+          <mxGeometry relative="1" x="0.5843" y="-32" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="2870" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-142" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-106" style="curved=1;startArrow=none;;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-120" value="Calibration Terminée">
+          <mxGeometry relative="1" x="0.0698" y="-4" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="2370" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-143" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-107" style="curved=1;startArrow=none;;exitX=0;exitY=0.5;entryX=0.5;entryY=0;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-120" value="Prêt">
+          <mxGeometry relative="1" x="-0.2022" y="5" as="geometry">
+            <mxPoint y="1" as="offset" />
+            <Array as="points">
+              <mxPoint x="2510" y="850" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-144" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-120" style="curved=1;startArrow=none;;exitX=0.36;exitY=1.01;entryX=0.5;entryY=0;rounded=0;" target="gN3j-lzW-usYKDrJdfj_-123" value="Angle proche de 0°">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2450" y="1030" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-146" parent="1" style="ellipse;fillColor=strokeColor;" value="" vertex="1">
+          <mxGeometry height="14" width="14" x="2493" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-157" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-147" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-102">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-147" parent="1" style="swimlane;fontStyle=1;align=center;verticalAlign=middle;startSize=25;container=0;collapsible=0;rounded=1;arcSize=14;dropTarget=0;verticalAlign=top;" value="Initialisation Système" vertex="1">
+          <mxGeometry height="210" width="267" x="2366.5" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-148" parent="gN3j-lzW-usYKDrJdfj_-147" style="rounded=1;arcSize=40;strokeWidth=2" value="Configurer I/O &amp; Moteurs" vertex="1">
+          <mxGeometry height="40" width="197" x="35" y="46" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-149" parent="gN3j-lzW-usYKDrJdfj_-147" style="rounded=1;arcSize=40;strokeWidth=2" value="Initialiser MPU6050" vertex="1">
+          <mxGeometry height="40" width="153" x="57" y="136" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-151" edge="1" parent="gN3j-lzW-usYKDrJdfj_-147" source="gN3j-lzW-usYKDrJdfj_-148" style="curved=1;startArrow=none;;exitX=0.5;exitY=0.99;entryX=0.5;entryY=-0.01;rounded=0;" target="gN3j-lzW-usYKDrJdfj_-149" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-153" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-146" style="curved=1;startArrow=none;;exitX=0.51;exitY=1;entryX=0.5;entryY=0;rounded=0;" target="gN3j-lzW-usYKDrJdfj_-147" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-154" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-128" style="curved=1;startArrow=none;;exitX=0.5;exitY=0;entryX=1;entryY=0.5;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-120" value="Robot redresser manuellement">
+          <mxGeometry relative="1" x="-0.3046" y="43" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="2890" y="1000" />
+            </Array>
+            <mxPoint x="3036" y="1146" as="sourcePoint" />
+            <mxPoint x="2790" y="1197" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-156" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-123" style="curved=1;startArrow=none;;exitX=1;exitY=0.5;entryX=0.5;entryY=1;rounded=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-128" value="Angle &gt; 45° ou -45° (Chute sur le côté)">
+          <mxGeometry relative="1" x="-0.1259" y="31" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="2850" y="1280" />
+            </Array>
+            <mxPoint x="2769" y="1688" as="sourcePoint" />
+            <mxPoint x="2480" y="1418" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-159" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-158" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="gN3j-lzW-usYKDrJdfj_-124">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-158" parent="1" style="rounded=1;arcSize=40;strokeWidth=2" value="Lecture Accéléromètre" vertex="1">
+          <mxGeometry height="40" width="213" x="2400" y="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="gN3j-lzW-usYKDrJdfj_-127" edge="1" parent="1" source="gN3j-lzW-usYKDrJdfj_-125" style="curved=1;startArrow=none;;exitX=1;exitY=0.5;entryX=1;entryY=0.5;rounded=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="gN3j-lzW-usYKDrJdfj_-158" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2670" y="1290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
