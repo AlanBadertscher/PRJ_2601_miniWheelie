@@ -76,6 +76,10 @@ Ce code implémente une machine d'état simple pour garder le robot en mode stat
 
 Le fonctionnement du robot repose sur trois concepts mathématiques majeurs, implémentés en boucle continue (à 100 Hz, soit toutes les 10 ms) pour assurer la stabilité :
 
+<div align="center">
+  <img width="1026" height="1322" alt="Machine_Detat_MiniWheelie drawio" src="https://github.com/user-attachments/assets/5d64a816-0c04-43c9-8051-8e4a1856fe0d" />
+</div>
+
 ### 1. Le calcul de l'inclinaison (Fusion de données)
 Le module MPU6050 capte les mouvements, mais ses données brutes doivent être traitées pour obtenir un angle d'inclinaison fiable (`anglePitch`).
 
