@@ -118,10 +118,10 @@ $$
 D = K_d \times \frac{e(t) - e(t-1)}{dt}
 $$
 
-* **La Sortie** ($pid\_output$) : Est la somme de ces trois forces pour dicter l'ordre final aux roues.
+* **La Sortie** ($pid Output$) : Est la somme de ces trois forces pour dicter l'ordre final aux roues.
 
 $$
-pid\_output = P + I + D
+pid Output = P + I + D
 $$
 
 ### 3. La commande matérielle des moteurs
@@ -131,5 +131,5 @@ Le résultat théorique du PID est ensuite converti en un signal de puissance de
 * **Ratio de Synchronisation** (`ratioLeft` / `ratioRight`) : Aucun moteur physique n'est strictement identique. Les ratios compensent la différence de vitesse native entre la roue gauche et la roue droite pour garantir que le robot roule droit.
 
 $$
-Vitesse_{Finale} = (|pid\_output| \times Ratio) + MinPWM
+Vitesse_{Finale} = (|pid Output| \times Ratio) + MinPWM
 $$
