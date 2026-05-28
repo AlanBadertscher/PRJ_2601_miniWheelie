@@ -18,7 +18,7 @@ const int ENB = 45; const int IN3 = 10; const int IN4 = 11;
 const int ENC_R_A = 9;  const int ENC_R_B = 47;
 
 //Broches capteur inclinaison
-#define MPU_ADDR 0x68
+#define MPU_ADDR 0x68 //Adresse I2C du capteur
 #define SDA_PIN 5
 #define SCL_PIN 4
 
@@ -34,9 +34,8 @@ const int ENC_R_A = 9;  const int ENC_R_B = 47;
 #define TFT_SCLK  14
 #define TFT_DC  21
 
+//Configuration de la communication avec l'écran
 Arduino_ESP32SPI *bus = new Arduino_ESP32SPI(TFT_DC,TFT_CS,TFT_SCLK,TFT_MOSI,TFT_MISO,HSPI,true);
-
-//Parametres ecran
 #define TFT_BLK  48
 #define TFT_RES  -1
 Arduino_GFX *gfx = new Arduino_ST7789(bus, TFT_RES, 0, true);
@@ -52,31 +51,31 @@ Arduino_GFX *gfx = new Arduino_ST7789(bus, TFT_RES, 0, true);
 
 uint8_t image_id = 0xff;
 
-//Valeurs globales capteurs
+//Variables globales capteurs
 volatile long countLeft = 0;
 volatile long countRight = 0;
 int16_t accX, accY, accZ;
 int16_t gyroX, gyroY, gyroZ;
 
-//Valeurs calibration
+//Variables calibration
 float offAccX = 0; 
 float offAccZ = 16384; 
 float offGyroY = 0;
-int commonMinPWM = 0;
-float ratioLeft = 1.0;
-float ratioRight = 1.0;
+int commonMinPWM = 0; //Puissance minimum pour faire bouger le robot
+float ratioLeft = 1.0; //Correction si la roue gauche est trop rapide
+float ratioRight = 1.0; //Correction si la roue droite est trop rapide
 
 //Securite et direction
-float anglePitch = 0;
+float anglePitch = 0; //Angle actuel du robot
 const float DEADZONE = 0; //Marge arret
 const float ANGLE_CHUTE = 60.0;
 const float ANGLE_REPRISE = 5;
 bool estTombe = false;
 
 //Reglage equilibre PID
-float Kp = 15;  //Force reaction
-float Ki = 0.3;   //Correction lente
-float Kd =  0.5;   //Amortisseur
+float Kp = 15;  //Force reaction immediate
+float Ki = 0.3;   //Correction lente accumulee
+float Kd =  0.5;   //Amortisseur pour eviter de trembler
 float setpoint = 0; //Point equilibre parfait
 float integral = 0;
 float previous_error = 0;
@@ -158,7 +157,7 @@ void image_show(char *p_filename) {
 void sdcard_init(void) {
   SD_MMC.setPins(PIN_SD_CLK, PIN_SD_CMD, PIN_SD_D0);
   if (!SD_MMC.begin("/sdcard", true, true)) {
-    Serial.println("SD card not found");
+    Serial.println("Carte SD introuvable");
     gfx->println(F("SD card not found"));
   }
 }
@@ -195,11 +194,18 @@ void display_init(void) {
 //-- aide - référence - lien : N/A
 //----------------------------------------------------------------------------------//
 void initHardwarePins() {
-  pinMode(ENA, OUTPUT); pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
-  pinMode(ENB, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
-  pinMode(ENC_L_A, INPUT); pinMode(ENC_L_B, INPUT);
-  pinMode(ENC_R_A, INPUT); pinMode(ENC_R_B, INPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENC_L_A, INPUT);
+  pinMode(ENC_L_B, INPUT);
+  pinMode(ENC_R_A, INPUT);
+  pinMode(ENC_R_B, INPUT);
   
+  //Surveillance des roues en arriere-plan
   attachInterrupt(digitalPinToInterrupt(ENC_L_A), readEncoderLeft, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENC_R_A), readEncoderRight, CHANGE);
 }
@@ -216,8 +222,8 @@ void initHardwarePins() {
 void initMPU6050() {
   Wire.begin(SDA_PIN, SCL_PIN);
   Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x6B); // Registre Power Management 1
-  Wire.write(0);    // Reveil
+  Wire.write(0x6B); //Registre Power Management 1
+  Wire.write(0);    //Reveil
   Wire.endTransmission(true);
   delay(1000);
 }
@@ -233,12 +239,15 @@ void initMPU6050() {
 //----------------------------------------------------------------------------------//
 void loadCalibrationOrRun() {
   readMPU();
-  Serial.print("Check Z au demarrage: "); Serial.println(accZ);
-  preferences.begin("robot_calib", false);
-
+  Serial.print("Check Z au demarrage: ");
+  Serial.println(accZ);
+  
+  //Si le robot est a l'envers
   if (accZ < -4000) {
     runCalibrationRoutine();
   } else {
+    //Sinon on charge les donnees de la memoire
+    preferences.begin("robot_calib", false);
     bool isCalibrated = preferences.getBool("isCalibrated", false); 
     if (isCalibrated) {
       Serial.println("--- CHARGEMENT DES DONNEES DEPUIS LA FLASH ---");
@@ -257,6 +266,7 @@ void loadCalibrationOrRun() {
       Serial.println("--> Robot pret pour l equilibre !");
       delay(2000);
     } else {
+      //Blocage si aucune donnees
       Serial.println("! ERREUR : AUCUNE CALIBRATION EN MEMOIRE !");
       Serial.println("Veuillez eteindre le robot, le retourner (roues en l air) et le rallumer pour calibrer.");
       while(true) { delay(1000); } 
@@ -309,6 +319,7 @@ void calculateRobotAngle(float dt) {
   float accPitch = atan2(accX_corrige, accZ_corrige) * 180.0 / PI;
   float gyroRate = -(gyroY - offGyroY) / 131.0;
   
+  //Filtre mixant gyro (court terme) et accelero (long terme)
   anglePitch = 0.98 * (anglePitch + gyroRate * dt) + 0.10 * accPitch;
 }
 
@@ -327,10 +338,11 @@ void checkFallStatus() {
     estTombe = true;
   }
 
+  //Si on le remet droit
   if (estTombe && abs(anglePitch) < ANGLE_REPRISE) {
     Serial.println("Robot redresse - Reprise equilibre");
     estTombe = false;
-    integral = 0; //Remise a zero memoire
+    integral = 0; //Remise a zero memoire des erreurs
     delay(500); 
     previous_time = millis(); 
   }
@@ -346,13 +358,15 @@ void checkFallStatus() {
 //-- aide - référence - lien : Régulation PID pour robot pendule inversé
 //----------------------------------------------------------------------------------//
 float computePID(float dt) {
-  float error = setpoint - anglePitch;
+  float error = setpoint - anglePitch; //De combien on est penche
+  
   integral += error * dt;
   integral = constrain(integral, -100, 100); //Securite depassement
   
-  float derivative = (error - previous_error) / dt;
+  float derivative = (error - previous_error) / dt; //Vitesse de chute
   previous_error = error;
 
+  //Additionne les 3 forces pour l'ordre final
   return (Kp * error) + (Ki * integral) + (Kd * derivative);
 }
 
@@ -375,8 +389,12 @@ void moveForward(int baseSpeed) {
   finalL = constrain(finalL, 0, 255);
   finalR = constrain(finalR, 0, 255);
 
-  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH); analogWrite(ENA, finalL);
-  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); analogWrite(ENB, finalR);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  analogWrite(ENA, finalL);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, finalR);
 }
 
 //----------------------------------------------------------------------------------//
@@ -394,8 +412,12 @@ void moveBackward(int baseSpeed) {
   finalL = constrain(finalL, 0, 255);
   finalR = constrain(finalR, 0, 255);
 
-  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW); analogWrite(ENA, finalL);
-  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH); analogWrite(ENB, finalR);
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, finalL);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENB, finalR);
 }
 
 //----------------------------------------------------------------------------------//
@@ -423,7 +445,7 @@ void stopMotors() {
 //----------------------------------------------------------------------------------//
 void applyMotorControl(float pid_output) {
   if (estTombe) {
-    stopMotors();
+    stopMotors(); //Si par terre on arrete
     integral = 0; 
   } else {
     int plageUtile = 255 - commonMinPWM;
@@ -435,10 +457,10 @@ void applyMotorControl(float pid_output) {
       integral = 0; 
     }
     else if (pid_output < 0) { 
-      moveForward(baseSpeed);
+      moveForward(baseSpeed); //On tombe en avant on roule en avant
     } 
     else if (pid_output > 0) {
-      moveBackward(baseSpeed);
+      moveBackward(baseSpeed); //On tombe en arriere on roule en arriere
     }
   }
 }
@@ -459,15 +481,18 @@ void applyMotorControl(float pid_output) {
 void printTelemetry(float pid_output) {
   static unsigned long last_print = 0;
   if (millis() - last_print > 250) {
-    Serial.print("Angle: "); Serial.print(anglePitch);
-    Serial.print(" | PID: "); Serial.print(pid_output);
-    Serial.print(" | Etat: "); Serial.println(estTombe ? "COUCHE" : "DEBOUT");
+    Serial.print("Angle: ");
+    Serial.print(anglePitch);
+    Serial.print(" | PID: ");
+    Serial.print(pid_output);
+    Serial.print(" | Etat: ");
+    Serial.println(estTombe ? "COUCHE" : "DEBOUT");
     last_print = millis();
   }
 }
 
 //==========================================
-// CALIBRATION (Reste globalement inchangé mais avec cartouche)
+// CALIBRATION
 //==========================================
 
 //----------------------------------------------------------------------------------//
@@ -530,11 +555,14 @@ void runCalibrationRoutine() {
     delay(50);
     if (abs(countRight) > 5) { minR = i; analogWrite(ENB, 0); break; }
   }
-  commonMinPWM = max(minL, minR);
+  commonMinPWM = max(minL, minR); //Garde la force la plus elevee des deux
 
-  Serial.print("-> PWM Min Moteur Gauche : "); Serial.println(minL);
-  Serial.print("-> PWM Min Moteur Droit  : "); Serial.println(minR);
-  Serial.print("-> PWM Min Commun (retenu): "); Serial.println(commonMinPWM);
+  Serial.print("-> PWM Min Moteur Gauche : ");
+  Serial.println(minL);
+  Serial.print("-> PWM Min Moteur Droit  : ");
+  Serial.println(minR);
+  Serial.print("-> PWM Min Commun (retenu): ");
+  Serial.println(commonMinPWM);
 
   //Etape3 roues synchronisees
   Serial.println("\n[3/3] Calibration Vitesses...");
@@ -542,8 +570,12 @@ void runCalibrationRoutine() {
   countLeft = 0; countRight = 0;
   int testSpeed = 200;
   
-  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH); analogWrite(ENA, testSpeed);
-  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW); analogWrite(ENB, testSpeed);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  analogWrite(ENA, testSpeed);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, testSpeed);
   
   delay(1000); 
   stopMotors();
@@ -552,6 +584,7 @@ void runCalibrationRoutine() {
   long ticksL = abs(countLeft);
   long ticksR = abs(countRight);
   
+  //Calcule un ratio pour ralentir la roue la plus rapide
   if (ticksL > ticksR) {
     ratioLeft = (float)ticksR / (float)ticksL; 
     ratioRight = 1.0; 
@@ -565,6 +598,7 @@ void runCalibrationRoutine() {
   Serial.println(" SAUVEGARDE DANS LA MEMOIRE FLASH...");
   image_show((char*)MODE_CALIBRATION_SAVE);
   
+  preferences.begin("robot_calib", false);
   preferences.putFloat("offAccX", offAccX);
   preferences.putFloat("offAccZ", offAccZ);
   preferences.putFloat("offGyroY", offGyroY);
@@ -612,15 +646,15 @@ void loop() {
   unsigned long current_time = millis();
   float dt = (current_time - previous_time) / 1000.0;
   
-  // Cadencement strict (100Hz max)
+  //Cadencement strict (100Hz max)
   if (dt < 0.01) return;
   previous_time = current_time;
 
-  readMPU();
-  calculateRobotAngle(dt);
-  checkFallStatus();
+  readMPU();                      //1.Regarde les capteurs
+  calculateRobotAngle(dt);        //2.Calcule l'angle
+  checkFallStatus();              //3.Verifie si on est tombe
   
-  float pid_output = computePID(dt);
-  applyMotorControl(pid_output);
-  printTelemetry(pid_output);
+  float pid_output = computePID(dt); //4.Calcule l'effort necessaire
+  applyMotorControl(pid_output);     //5.Envoie l'ordre aux roues
+  printTelemetry(pid_output);        //6.Affiche les infos
 }
