@@ -59,9 +59,13 @@ Pour compiler et téléverser le code vers l'ESP32-S3, allez dans le menu **Tool
 
 ---
 
-## Implémentation du Code et Développement Iteratif
+## Implémentation du Code 
 
 Le développement du robot a été réalisé de manière progressive, en commençant par des tests unitaires matériels pour aboutir à un premier algorithme de contrôle d'auto-équilibrage.
+
+<div align="center">
+  <img width="1026" height="1322" alt="Machine_Detat_MiniWheelie drawio" src="https://github.com/user-attachments/assets/5d64a816-0c04-43c9-8051-8e4a1856fe0d" />
+</div>
 
 ### Premier Niveau de Contrôle : `SBRobot_Immobile_v1.0.0.ino`
 Ce code implémente une machine d'état simple pour garder le robot en mode stationnaire.
@@ -72,61 +76,45 @@ Ce code implémente une machine d'état simple pour garder le robot en mode stat
 
 ---
 
-## Logique Mathématique et Calculs Principaux
+## Logique Mathématique 
 
 Le fonctionnement du robot repose sur trois concepts mathématiques majeurs, implémentés en boucle continue (à 100 Hz, soit toutes les 10 ms) pour assurer la stabilité :
-
-<div align="center">
-  <img width="1026" height="1322" alt="Machine_Detat_MiniWheelie drawio" src="https://github.com/user-attachments/assets/5d64a816-0c04-43c9-8051-8e4a1856fe0d" />
-</div>
 
 ### 1. Le calcul de l'inclinaison (Fusion de données)
 Le module MPU6050 capte les mouvements, mais ses données brutes doivent être traitées pour obtenir un angle d'inclinaison fiable (`anglePitch`).
 
 * **L'Accéléromètre** calcule un angle brut basé sur la gravité terrestre grâce à la trigonométrie (Arc Tangente) :
 
-$$
-accPitch = \arctan2(accX, accZ) \times \frac{180}{\pi}
-$$
+$$accPitch = \arctan2(accX, accZ) \times \frac{180}{\pi}$$
 
-* **Le Gyroscope** mesure la vitesse de rotation en degrés par seconde (convertie selon la sensibilité matérielle du MPU, ici 131.0 LSB/°/s) :
+* **Le Gyroscope** mesure la vitesse de rotation en degrés par seconde :
 
-$$
-gyroRate = \frac{-(gyroY - offGyroY)}{131.0}
-$$
+$$gyroRate = \frac{-(gyroY - offGyroY)}{131.0}$$
+
+> **Pourquoi 131.0 ?** C'est la sensibilité matérielle du capteur. Cela signifie que pour chaque tranche de **131 unités brutes** lues, le robot est en train de tourner à la vitesse de **1 degré par seconde**.
 
 * **Le Filtre Complémentaire** combine ces deux mesures. Il fait confiance au gyroscope sur le court terme (très réactif) et à l'accéléromètre sur le long terme (pour corriger la dérive gyroscopique) :
 
-$$
-anglePitch = 0.98 \times (anglePitch + gyroRate \times dt) + 0.10 \times accPitch
-$$
+$$anglePitch = 0.98 \times (anglePitch + gyroRate \times dt) + 0.10 \times accPitch$$
 
 ### 2. Le Régulateur PID (Auto-équilibrage)
-Une fois l'angle connu, le robot doit déterminer avec quelle force faire tourner ses roues. C'est le rôle du PID. L'erreur $e(t)$ représente l'écart entre le point d'équilibre parfait (`setpoint = 0`) et l'angle actuel.
+Une fois l'angle connu, le robot doit déterminer avec quelle force faire tourner ses roues. C'est le rôle du PID. L'erreur $\text{erreur}(t)$ représente l'écart entre le point d'équilibre parfait (`setpoint = 0`) et l'angle actuel.
 
 * **L'Action Proportionnelle** ($K_p = 15$) : Fournit une force de réaction immédiate. Plus le robot penche, plus il pousse fort.
 
-$$
-P = K_p \times e(t)
-$$
+$$P = K_p \times \text{erreur}(t)$$
 
 * **L'Action Intégrale** ($K_i = 0.3$) : Additionne les petites erreurs au fil du temps pour corriger un léger déséquilibre persistant (bridée entre -100 et 100 pour la sécurité matérielle).
 
-$$
-I = K_i \times \int e(t) dt
-$$
+$$I = K_i \times \int \text{erreur}(t) dt$$
 
 * **L'Action Dérivée** ($K_d = 0.5$) : Agit comme un amortisseur. Elle regarde à quelle vitesse le robot tombe pour anticiper et éviter qu'il n'oscille indéfiniment.
 
-$$
-D = K_d \times \frac{e(t) - e(t-1)}{dt}
-$$
+$$D = K_d \times \frac{\text{erreur}(t) - \text{erreur}(t-1)}{dt}$$
 
-* **La Sortie** ($pid Output$) : Est la somme de ces trois forces pour dicter l'ordre final aux roues.
+* **La Sortie** ($\text{pidOutput}$) : Est la somme de ces trois forces pour dicter l'ordre final aux roues.
 
-$$
-pid Output = P + I + D
-$$
+$$\text{pidOutput} = P + I + D$$
 
 ### 3. La commande matérielle des moteurs
 Le résultat théorique du PID est ensuite converti en un signal de puissance de 0 à 255 (PWM) utilisable par les ponts en H des moteurs physiques.
@@ -134,6 +122,4 @@ Le résultat théorique du PID est ensuite converti en un signal de puissance de
 * **Zone Morte** (`commonMinPWM`) : Si l'on envoie un courant trop faible à un moteur, il ne tourne pas à cause des frottements mécaniques. Le code ajoute donc une puissance de base pour compenser cela dès que le PID ordonne un mouvement.
 * **Ratio de Synchronisation** (`ratioLeft` / `ratioRight`) : Aucun moteur physique n'est strictement identique. Les ratios compensent la différence de vitesse native entre la roue gauche et la roue droite pour garantir que le robot roule droit.
 
-$$
-Vitesse_{Finale} = (|pid Output| \times Ratio) + MinPWM
-$$
+$$Vitesse_{Finale} = (|\text{pidOutput}| \times Ratio) + MinPWM$$
