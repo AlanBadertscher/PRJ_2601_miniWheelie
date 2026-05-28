@@ -80,7 +80,7 @@ Ce code implémente une machine d'état simple pour garder le robot en mode stat
 
 Le fonctionnement du robot repose sur trois concepts mathématiques majeurs, implémentés en boucle continue (à 100 Hz, soit toutes les 10 ms) pour assurer la stabilité :
 
-### 1. Le calcul de l'inclinaison (Fusion de données)
+### 1. Le calcul de l'inclinaison
 Le module MPU6050 capte les mouvements, mais ses données brutes doivent être traitées pour obtenir un angle d'inclinaison fiable (`anglePitch`).
 
 * **L'Accéléromètre** calcule un angle brut basé sur la gravité terrestre grâce à la trigonométrie (Arc Tangente) :
@@ -97,7 +97,7 @@ $$gyroRate = \frac{-(gyroY - offGyroY)}{131.0}$$
 
 $$anglePitch = 0.98 \times (anglePitch + gyroRate \times dt) + 0.10 \times accPitch$$
 
-### 2. Le Régulateur PID (Auto-équilibrage)
+### 2. Le Régulateur PID
 Une fois l'angle connu, le robot doit déterminer avec quelle force faire tourner ses roues. C'est le rôle du PID. L'erreur $\text{erreur}(t)$ représente l'écart entre le point d'équilibre parfait (`setpoint = 0`) et l'angle actuel.
 
 * **L'Action Proportionnelle** ($K_p = 15$) : Fournit une force de réaction immédiate. Plus le robot penche, plus il pousse fort.
