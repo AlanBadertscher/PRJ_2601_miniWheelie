@@ -74,7 +74,7 @@ Ce code implémente une machine d'état simple pour garder le robot en mode stat
 
 * **Mode de Calibration:** Au démarrage, si le robot est à l'envers, il rentre dans un état de calibration. Il va lire les données du capteur MPU pendant quelques secondes lorsqu'il est posé à plat sur une surface stable pour définir les offsets du capteur afin d'avoir une référence à (0°). Il va aussi calibrer le PWM minimum pour que les moteurs commencent à tourner. Toutes les informations de la calibration s'affichent dans le Moniteur Série et s'enregistrent dans la mémoire flash de l'ESP32.
 * **Contrôle PID (Proportionnel, Intégral, Dérivé):** Une fois calibré, le robot passe dans un état de contrôle. L'algorithme PID compare en permanence l'inclinaison mesurée à la consigne (0°) et calcule la vitesse et le sens de rotation des roues à appliquer pour contrecarrer la chute, maintenant ainsi le robot en position verticale et immobile.
-* **Affichage sur l'Écran TFT:** Cette version utilise l'écran TFT intégré de 2,9 pouces pour afficher en temps réel des informations clés sur l'état du robot, telles que l'angle actuel, l'état de la calibration, et la sortie du PID.
+* **Affichage sur l'Écran TFT:** Cette version utilise l'écran TFT intégré de 2,9 pouces pour afficher l'étape de calibration ou un écran blanc en mode normal.
 
 ---
 
