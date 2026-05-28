@@ -1,4 +1,6 @@
-# 🤖 Elektor Mini-Wheelie : Projet 2601 Robot self-balancing
+# Elektor Mini-Wheelie : Projet 2601 Robot self-balancing
+
+> **Statut du Projet : Le robot est capable de rester en équilibre de façon stable avec le code "SBRobot_Immobile_v1.0.0.ino" .**
 
 > **Documentation de suivi de projet et d'implémentation**
 > *Basé sur le kit Makerfabs / Elektor*
